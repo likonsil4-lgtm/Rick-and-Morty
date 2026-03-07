@@ -4,16 +4,7 @@ import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/character_model.dart';
-
-abstract class CharacterLocalDataSource {
-  Future<List<CharacterModel>> getCachedCharacters();
-  Future<void> cacheCharacters(List<CharacterModel> characters);
-  Future<List<CharacterModel>> getCachedFavorites();
-  Future<void> cacheFavorite(CharacterModel character);
-  Future<void> removeCachedFavorite(int id);
-  Future<bool> isFavorite(int id);
-  Future<void> clearCache();
-}
+import 'database_helper.dart';
 
 @Injectable(as: CharacterLocalDataSource)
 class CharacterLocalDataSourceImpl implements CharacterLocalDataSource {
@@ -31,7 +22,6 @@ class CharacterLocalDataSourceImpl implements CharacterLocalDataSource {
     final jsonString = _prefs.getString(_cachedCharactersKey);
     if (jsonString == null) return [];
 
-    // Проверяем валидность кеша
     final cacheTime = _prefs.getInt(_cacheTimeKey);
     if (cacheTime != null) {
       final cachedDate = DateTime.fromMillisecondsSinceEpoch(cacheTime);
@@ -58,35 +48,34 @@ class CharacterLocalDataSourceImpl implements CharacterLocalDataSource {
     await _prefs.remove(_cacheTimeKey);
   }
 
-  // Favorites используют SQLite (уже реализовано в DatabaseHelper)
   @override
   Future<List<CharacterModel>> getCachedFavorites() async {
     final favoritesData = await _db.getFavorites();
     return favoritesData.map((data) => CharacterModel(
-      id: data['id'],
-      name: data['name'],
-      status: data['status'],
-      species: data['species'],
-      type: data['type'],
-      gender: data['gender'],
-      image: data['image'],
-      location: LocationModel(name: data['location']),
-      origin: LocationModel(name: data['origin']),
+      id: data[DatabaseHelper.columnId] as int,
+      name: data[DatabaseHelper.columnName] as String,
+      status: data[DatabaseHelper.columnStatus] as String,
+      species: data[DatabaseHelper.columnSpecies] as String,
+      type: data[DatabaseHelper.columnType] as String,
+      gender: data[DatabaseHelper.columnGender] as String,
+      image: data[DatabaseHelper.columnImage] as String,
+      location: LocationModel(name: data[DatabaseHelper.columnLocation] as String),
+      origin: LocationModel(name: data[DatabaseHelper.columnOrigin] as String),
     )).toList();
   }
 
   @override
   Future<void> cacheFavorite(CharacterModel character) async {
     await _db.insertFavorite({
-      'id': character.id,
-      'name': character.name,
-      'status': character.status,
-      'species': character.species,
-      'type': character.type,
-      'gender': character.gender,
-      'image': character.image,
-      'location': character.location.name,
-      'origin': character.origin.name,
+      DatabaseHelper.columnId: character.id,
+      DatabaseHelper.columnName: character.name,
+      DatabaseHelper.columnStatus: character.status,
+      DatabaseHelper.columnSpecies: character.species,
+      DatabaseHelper.columnType: character.type,
+      DatabaseHelper.columnGender: character.gender,
+      DatabaseHelper.columnImage: character.image,
+      DatabaseHelper.columnLocation: character.location.name,
+      DatabaseHelper.columnOrigin: character.origin.name,
     });
   }
 
@@ -99,4 +88,14 @@ class CharacterLocalDataSourceImpl implements CharacterLocalDataSource {
   Future<bool> isFavorite(int id) async {
     return await _db.isFavorite(id);
   }
+}
+
+abstract class CharacterLocalDataSource {
+  Future<List<CharacterModel>> getCachedCharacters();
+  Future<void> cacheCharacters(List<CharacterModel> characters);
+  Future<List<CharacterModel>> getCachedFavorites();
+  Future<void> cacheFavorite(CharacterModel character);
+  Future<void> removeCachedFavorite(int id);
+  Future<bool> isFavorite(int id);
+  Future<void> clearCache();
 }

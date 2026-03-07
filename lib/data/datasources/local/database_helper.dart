@@ -51,7 +51,6 @@ class DatabaseHelper {
     ''');
   }
 
-  // CRUD Operations
   Future<int> insertFavorite(Map<String, dynamic> row) async {
     final db = await database;
     return await db.insert(tableFavorites, row);
