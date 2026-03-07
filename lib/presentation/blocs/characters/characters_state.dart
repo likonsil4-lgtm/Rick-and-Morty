@@ -3,33 +3,31 @@ part of 'characters_cubit.dart';
 enum CharactersStatus { initial, loading, success, failure }
 
 class CharactersState extends Equatable {
-  final CharactersStatus status;
   final List<Character> characters;
+  final CharactersStatus status;
   final bool hasReachedMax;
   final String? errorMessage;
-  final String? searchQuery;
+  final String searchQuery;
   final String? statusFilter;
   final String? genderFilter;
-
-  // Новые поля для избранного
-  final Set<int> favorites; // ID избранных персонажей для быстрого доступа
-  final Character? lastToggledCharacter; // Последний переключённый персонаж (для SnackBar)
+  final Set<int> favorites;
+  final Character? lastToggledCharacter;
 
   const CharactersState({
-    this.status = CharactersStatus.initial,
     this.characters = const [],
+    this.status = CharactersStatus.initial,
     this.hasReachedMax = false,
     this.errorMessage,
-    this.searchQuery,
+    this.searchQuery = '',
     this.statusFilter,
     this.genderFilter,
-    this.favorites = const {}, // Пустое множество по умолчанию
-    this.lastToggledCharacter, // null по умолчанию
+    this.favorites = const {},
+    this.lastToggledCharacter,
   });
 
   CharactersState copyWith({
-    CharactersStatus? status,
     List<Character>? characters,
+    CharactersStatus? status,
     bool? hasReachedMax,
     String? errorMessage,
     String? searchQuery,
@@ -37,19 +35,18 @@ class CharactersState extends Equatable {
     String? genderFilter,
     Set<int>? favorites,
     Character? lastToggledCharacter,
-    bool clearLastToggledCharacter = false, // Флаг для сброса
+    bool clearLastToggled = false,
   }) {
     return CharactersState(
-      status: status ?? this.status,
       characters: characters ?? this.characters,
+      status: status ?? this.status,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
       errorMessage: errorMessage ?? this.errorMessage,
       searchQuery: searchQuery ?? this.searchQuery,
       statusFilter: statusFilter ?? this.statusFilter,
       genderFilter: genderFilter ?? this.genderFilter,
       favorites: favorites ?? this.favorites,
-      // Если clearLastToggledCharacter = true, сбрасываем в null
-      lastToggledCharacter: clearLastToggledCharacter
+      lastToggledCharacter: clearLastToggled
           ? null
           : (lastToggledCharacter ?? this.lastToggledCharacter),
     );
@@ -57,8 +54,8 @@ class CharactersState extends Equatable {
 
   @override
   List<Object?> get props => [
-    status,
     characters,
+    status,
     hasReachedMax,
     errorMessage,
     searchQuery,

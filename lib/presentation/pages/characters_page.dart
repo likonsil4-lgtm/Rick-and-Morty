@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
+import '../widgets/rick_morty_snackbar.dart';
 import '../../core/di/injection.dart';
 import '../blocs/characters/characters_cubit.dart';
 import '../widgets/animated_character_card.dart';
@@ -494,72 +494,31 @@ class _CharactersPageState extends State<CharactersPage>
     );
   }
 
+  // ИСПРАВЛЕННЫЙ ОБРАБОТЧИК СОСТОЯНИЙ
   void _handleStateChanges(BuildContext context, CharactersState state) {
+    // Обработка ошибок
     if (state.status == CharactersStatus.failure) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(
-                Icons.error_outline,
-                color: Theme.of(context).colorScheme.onErrorContainer,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  state.errorMessage ?? 'Error occurred',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onErrorContainer,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
-          action: SnackBarAction(
-            label: 'Retry',
-            textColor: Theme.of(context).colorScheme.error,
-            onPressed: () {
-              context.read<CharactersCubit>().loadCharacters();
-            },
-          ),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          margin: const EdgeInsets.all(16),
-          duration: const Duration(seconds: 4),
-        ),
+      RickMortySnackbar.showError(
+        context,
+        state.errorMessage ?? 'Something went terribly wrong!',
       );
     }
 
+    // Обработка добавления/удаления из избранного
     if (state.lastToggledCharacter != null) {
       final isFavorite = state.favorites.contains(state.lastToggledCharacter!.id);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(
-                isFavorite ? Icons.favorite : Icons.favorite_border,
-                color: isFavorite ? Colors.red : null,
-                size: 20,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                isFavorite
-                    ? 'Added to favorites'
-                    : 'Removed from favorites',
-              ),
-            ],
-          ),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          margin: const EdgeInsets.all(16),
-        ),
-      );
+
+      if (isFavorite) {
+        RickMortySnackbar.showFavoriteAdded(
+          context,
+          state.lastToggledCharacter!.name,
+        );
+      } else {
+        RickMortySnackbar.showFavoriteRemoved(
+          context,
+          state.lastToggledCharacter!.name,
+        );
+      }
     }
   }
 

@@ -46,7 +46,7 @@ class CharactersCubit extends Cubit<CharactersState> {
       } else {
         emit(state.copyWith(
           status: CharactersStatus.loading,
-          clearLastToggledCharacter: true, // Сбрасываем при пагинации
+          clearLastToggled: true, // Сбрасываем при пагинации
         ));
       }
 
@@ -72,13 +72,13 @@ class CharactersCubit extends Cubit<CharactersState> {
         status: CharactersStatus.success,
         characters: allCharacters,
         hasReachedMax: _hasReachedMax,
-        clearLastToggledCharacter: true, // Сбрасываем после загрузки
+        clearLastToggled: true, // Сбрасываем после загрузки
       ));
     } catch (e) {
       emit(state.copyWith(
         status: CharactersStatus.failure,
         errorMessage: e.toString(),
-        clearLastToggledCharacter: true,
+        clearLastToggled: true,
       ));
     }
   }
@@ -98,18 +98,7 @@ class CharactersCubit extends Cubit<CharactersState> {
   }
 
   Future<void> toggleFavorite(Character character) async {
-    if (isClosed) return;
-
     await _repository.toggleFavorite(character);
-
-    final isNowFavorite = !character.isFavorite;
-    final updatedFavorites = Set<int>.from(state.favorites);
-
-    if (isNowFavorite) {
-      updatedFavorites.add(character.id);
-    } else {
-      updatedFavorites.remove(character.id);
-    }
 
     final updatedCharacters = state.characters.map((c) {
       if (c.id == character.id) {
@@ -118,19 +107,23 @@ class CharactersCubit extends Cubit<CharactersState> {
       return c;
     }).toList();
 
-    // Эмитим с lastToggledCharacter для показа SnackBar
+    // Обновляем favorites set
+    final updatedFavorites = Set<int>.from(state.favorites);
+    if (updatedFavorites.contains(character.id)) {
+      updatedFavorites.remove(character.id);
+    } else {
+      updatedFavorites.add(character.id);
+    }
+
     emit(state.copyWith(
       characters: updatedCharacters,
       favorites: updatedFavorites,
       lastToggledCharacter: character,
     ));
 
-    // Через небольшую задержку сбрасываем lastToggledCharacter,
-    // чтобы SnackBar не показывался повторно при rebuild
+    // Очищаем lastToggledCharacter после показа уведомления
     await Future.delayed(const Duration(milliseconds: 100));
-    if (!isClosed) {
-      emit(state.copyWith(clearLastToggledCharacter: true));
-    }
+    emit(state.copyWith(clearLastToggled: true));
   }
 
   void updateSearch(String query) {
