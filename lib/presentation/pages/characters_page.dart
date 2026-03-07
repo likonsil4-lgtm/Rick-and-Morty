@@ -60,7 +60,7 @@ class _CharactersPageState extends State<CharactersPage>
     final cubit = context.read<CharactersCubit>();
     final state = cubit.state;
 
-    if (state.characters.isNotEmpty && state.status == CharactersStatus.success) {
+    if (state.characters.isNotEmpty) {
       cubit.loadCharacters(refresh: false);
     }
   }
