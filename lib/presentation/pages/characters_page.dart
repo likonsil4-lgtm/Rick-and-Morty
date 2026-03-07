@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 import '../../core/di/injection.dart';
 import '../blocs/characters/characters_cubit.dart';
 import '../widgets/animated_character_card.dart';
@@ -48,102 +47,98 @@ class _CharactersPageState extends State<CharactersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverAppBar(
-            floating: true,
-            pinned: true,
-            expandedHeight: 120,
-            flexibleSpace: FlexibleSpaceBar(
-              title: const Text(
-                'Rick & Morty',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Theme.of(context).colorScheme.primary,
-                      Theme.of(context).colorScheme.secondary,
-                    ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Заголовок Characters
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: Row(
+                children: [
+                  Text(
+                    'Characters',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(60),
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: CustomSearchBar(
-                  controller: _searchController,
-                  onChanged: (value) {
-                    context.read<CharactersCubit>().updateSearch(value);
-                  },
-                  onFilterTap: () => _showFilterSheet(context),
-                ),
+            // Поисковая строка (вне SliverAppBar, чтобы не было переполнения)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: CustomSearchBar(
+                controller: _searchController,
+                onChanged: (value) {
+                  context.read<CharactersCubit>().updateSearch(value);
+                },
+                onFilterTap: () => _showFilterSheet(context),
               ),
             ),
-          ),
-        ],
-        body: BlocConsumer<CharactersCubit, CharactersState>(
-          listener: (context, state) {
-            if (state.status == CharactersStatus.failure) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.errorMessage ?? 'Error'),
-                  action: SnackBarAction(
-                    label: 'Retry',
-                    onPressed: () {
-                      context.read<CharactersCubit>().loadCharacters();
-                    },
-                  ),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            }
-          },
-          builder: (context, state) {
-            if (state.status == CharactersStatus.failure &&
-                state.characters.isEmpty) {
-              return _buildErrorWidget(state.errorMessage);
-            }
-
-            if (state.characters.isEmpty && state.status == CharactersStatus.loading) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            return RefreshIndicator(
-              onRefresh: () async {
-                await context.read<CharactersCubit>().loadCharacters(refresh: true);
-              },
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.only(top: 8),
-                itemCount: state.hasReachedMax
-                    ? state.characters.length
-                    : state.characters.length + 1,
-                itemBuilder: (context, index) {
-                  if (index >= state.characters.length) {
-                    return const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Center(child: CircularProgressIndicator()),
+            const SizedBox(height: 8),
+            // Основной контент со скроллом
+            Expanded(
+              child: BlocConsumer<CharactersCubit, CharactersState>(
+                listener: (context, state) {
+                  if (state.status == CharactersStatus.failure) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(state.errorMessage ?? 'Error'),
+                        action: SnackBarAction(
+                          label: 'Retry',
+                          onPressed: () {
+                            context.read<CharactersCubit>().loadCharacters();
+                          },
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                      ),
                     );
                   }
+                },
+                builder: (context, state) {
+                  if (state.status == CharactersStatus.failure &&
+                      state.characters.isEmpty) {
+                    return _buildErrorWidget(state.errorMessage);
+                  }
 
-                  final character = state.characters[index];
-                  return AnimatedCharacterCard(
-                    character: character,
-                    index: index,
-                    onFavoriteToggle: () {
-                      context.read<CharactersCubit>().toggleFavorite(character);
+                  if (state.characters.isEmpty && state.status == CharactersStatus.loading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      await context.read<CharactersCubit>().loadCharacters(refresh: true);
                     },
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: state.hasReachedMax
+                          ? state.characters.length
+                          : state.characters.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index >= state.characters.length) {
+                          return const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
+
+                        final character = state.characters[index];
+                        return AnimatedCharacterCard(
+                          character: character,
+                          index: index,
+                          onFavoriteToggle: () {
+                            context.read<CharactersCubit>().toggleFavorite(character);
+                          },
+                        );
+                      },
+                    ),
                   );
                 },
               ),
-            );
-          },
+            ),
+          ],
         ),
       ),
     );
