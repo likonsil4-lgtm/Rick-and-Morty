@@ -1,0 +1,68 @@
+import 'package:equatable/equatable.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:injectable/injectable.dart';
+
+import '../../../domain/entities/character.dart';
+import '../../../domain/repositories/character_repository.dart';
+
+part 'characters_state.dart';
+
+@injectable
+class CharactersCubit extends Cubit<CharactersState> {
+  final CharacterRepository _repository;
+  int _currentPage = 1;
+  bool _hasReachedMax = false;
+
+  CharactersCubit(this._repository) : super(const CharactersState());
+
+  Future<void> loadCharacters({bool refresh = false}) async {
+    if (state.status == CharactersStatus.loading ||
+        (_hasReachedMax && !refresh)) return;
+
+    try {
+      if (refresh) {
+        _currentPage = 1;
+        _hasReachedMax = false;
+        emit(state.copyWith(status: CharactersStatus.loading, characters: []));
+      } else {
+        emit(state.copyWith(status: CharactersStatus.loading));
+      }
+
+      final characters = await _repository.getCharacters(page: _currentPage);
+
+      if (characters.isEmpty) {
+        _hasReachedMax = true;
+      } else {
+        _currentPage++;
+      }
+
+      final allCharacters = refresh
+          ? characters
+          : [...state.characters, ...characters];
+
+      emit(state.copyWith(
+        status: CharactersStatus.success,
+        characters: allCharacters,
+        hasReachedMax: _hasReachedMax,
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+        status: CharactersStatus.failure,
+        errorMessage: e.toString(),
+      ));
+    }
+  }
+
+  Future<void> toggleFavorite(Character character) async {
+    await _repository.toggleFavorite(character);
+
+    final updatedCharacters = state.characters.map((c) {
+      if (c.id == character.id) {
+        return c.copyWith(isFavorite: !c.isFavorite);
+      }
+      return c;
+    }).toList();
+
+    emit(state.copyWith(characters: updatedCharacters));
+  }
+}
