@@ -17,6 +17,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   final List<String> statuses = ['alive', 'dead', 'unknown'];
   final List<String> genders = ['female', 'male', 'genderless', 'unknown'];
 
+  bool get _hasActiveFilters => selectedStatus != null || selectedGender != null;
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -29,6 +31,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Индикатор сверху
           Center(
             child: Container(
               width: 40,
@@ -40,11 +43,29 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Filter Characters',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+
+          // Заголовок с кнопкой сброса
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Filter Characters',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              if (_hasActiveFilters)
+                TextButton.icon(
+                  onPressed: _resetFilters,
+                  icon: const Icon(Icons.clear_all, size: 18),
+                  label: const Text('Reset'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.red,
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 20),
+
+          // Status
           const Text('Status', style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           Wrap(
@@ -60,6 +81,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
             )).toList(),
           ),
           const SizedBox(height: 20),
+
+          // Gender
           const Text('Gender', style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           Wrap(
@@ -75,21 +98,74 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
             )).toList(),
           ),
           const SizedBox(height: 30),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                context.read<CharactersCubit>().updateFilters(
-                  status: selectedStatus,
-                  gender: selectedGender,
-                );
-                Navigator.pop(context);
-              },
-              child: const Text('Apply Filters'),
-            ),
+
+          // Кнопки действий
+          Row(
+            children: [
+              if (_hasActiveFilters) ...[
+                Expanded(
+                  flex: 1,
+                  child: OutlinedButton.icon(
+                    onPressed: _resetFilters,
+                    icon: const Icon(Icons.clear),
+                    label: const Text('Reset'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+              // Кнопка применения
+              Expanded(
+                flex: _hasActiveFilters ? 2 : 1,
+                child: ElevatedButton(
+                  onPressed: _applyFilters,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: Text(_hasActiveFilters ? 'Apply Filters' : 'Show All Characters'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  void _resetFilters() {
+    setState(() {
+      selectedStatus = null;
+      selectedGender = null;
+    });
+
+    // Применяем пустые фильтры (сброс)
+    context.read<CharactersCubit>().updateFilters(
+      status: null,
+      gender: null,
+    );
+
+    Navigator.pop(context);
+
+    // Показываем уведомление
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Filters reset'),
+        duration: Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  // Применение фильтров
+  void _applyFilters() {
+    context.read<CharactersCubit>().updateFilters(
+      status: selectedStatus,
+      gender: selectedGender,
+    );
+    Navigator.pop(context);
   }
 }

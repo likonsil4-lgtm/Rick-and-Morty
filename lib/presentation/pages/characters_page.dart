@@ -22,10 +22,28 @@ class _CharactersPageState extends State<CharactersPage> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    // Гарантируем загрузку при старте
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CharactersCubit>().loadCharacters();
-    });
+    context.read<CharactersCubit>().loadCharacters();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _refreshOnReturn();
+  }
+
+  @override
+  void didUpdateWidget(covariant CharactersPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _refreshOnReturn();
+  }
+
+  void _refreshOnReturn() {
+    final cubit = context.read<CharactersCubit>();
+    final state = cubit.state;
+
+    if (state.characters.isNotEmpty && state.status == CharactersStatus.success) {
+      cubit.loadCharacters(refresh: false);
+    }
   }
 
   void _onScroll() {
@@ -38,8 +56,7 @@ class _CharactersPageState extends State<CharactersPage> {
     if (!_scrollController.hasClients) return false;
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.offset;
-    // Добавляем небольшой запас для более раннего триггера
-    return currentScroll >= (maxScroll * 0.8);
+    return currentScroll >= (maxScroll * 0.9);
   }
 
   @override
@@ -52,106 +69,102 @@ class _CharactersPageState extends State<CharactersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Заголовок Characters
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              child: Row(
-                children: [
-                  Text(
-                    'Characters',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          SliverAppBar(
+            floating: true,
+            pinned: true,
+            expandedHeight: 120,
+            flexibleSpace: FlexibleSpaceBar(
+              title: const Text(
+                'Rick & Morty',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Theme.of(context).colorScheme.primary,
+                      Theme.of(context).colorScheme.secondary,
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
-            // Поисковая строка
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: CustomSearchBar(
-                controller: _searchController,
-                onChanged: (value) {
-                  // Сброс при новом поиске и удаление дубликатов на уровне кубита
-                  context.read<CharactersCubit>().updateSearch(value);
-                },
-                onFilterTap: () => _showFilterSheet(context),
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(60),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: CustomSearchBar(
+                  controller: _searchController,
+                  onChanged: (value) {
+                    context.read<CharactersCubit>().updateSearch(value);
+                  },
+                  onFilterTap: () => _showFilterSheet(context),
+                ),
               ),
             ),
-            const SizedBox(height: 8),
-            // Основной контент
-            Expanded(
-              child: BlocConsumer<CharactersCubit, CharactersState>(
-                listener: (context, state) {
-                  if (state.status == CharactersStatus.failure) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(state.errorMessage ?? 'Error'),
-                        action: SnackBarAction(
-                          label: 'Retry',
-                          onPressed: () {
-                            context.read<CharactersCubit>().loadCharacters();
-                          },
-                        ),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
-                },
-                builder: (context, state) {
-                  if (state.status == CharactersStatus.failure &&
-                      state.characters.isEmpty) {
-                    return _buildErrorWidget(state.errorMessage);
-                  }
-
-                  if (state.characters.isEmpty && state.status == CharactersStatus.loading) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  if (state.characters.isEmpty) {
-                    return const Center(
-                      child: Text('No characters found'),
-                    );
-                  }
-
-                  return RefreshIndicator(
-                    onRefresh: () async {
-                      await context.read<CharactersCubit>().loadCharacters(refresh: true);
+          ),
+        ],
+        body: BlocConsumer<CharactersCubit, CharactersState>(
+          listener: (context, state) {
+            if (state.status == CharactersStatus.failure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.errorMessage ?? 'Error'),
+                  action: SnackBarAction(
+                    label: 'Retry',
+                    onPressed: () {
+                      context.read<CharactersCubit>().loadCharacters();
                     },
-                    child: ListView.builder(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      // Используем фактическую длину списка без дубликатов
-                      itemCount: state.hasReachedMax
-                          ? state.characters.length
-                          : state.characters.length + 1,
-                      itemBuilder: (context, index) {
-                        if (index >= state.characters.length) {
-                          return const Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        }
+                  ),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          },
+          builder: (context, state) {
+            if (state.status == CharactersStatus.failure &&
+                state.characters.isEmpty) {
+              return _buildErrorWidget(state.errorMessage);
+            }
 
-                        final character = state.characters[index];
-                        return AnimatedCharacterCard(
-                          character: character,
-                          index: index,
-                          onFavoriteToggle: () {
-                            context.read<CharactersCubit>().toggleFavorite(character);
-                          },
-                        );
-                      },
-                    ),
+            if (state.characters.isEmpty && state.status == CharactersStatus.loading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            return RefreshIndicator(
+              onRefresh: () async {
+                await context.read<CharactersCubit>().loadCharacters(refresh: true);
+              },
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.only(top: 8),
+                itemCount: state.hasReachedMax
+                    ? state.characters.length
+                    : state.characters.length + 1,
+                itemBuilder: (context, index) {
+                  if (index >= state.characters.length) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
+                  final character = state.characters[index];
+                  return AnimatedCharacterCard(
+                    character: character,
+                    index: index,
+                    onFavoriteToggle: () {
+                      context.read<CharactersCubit>().toggleFavorite(character);
+                    },
                   );
                 },
               ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
+import '../blocs/favorites/favorites_cubit.dart';
 import '../blocs/theme/theme_cubit.dart';
 import 'characters_page.dart';
 import 'favorites_page.dart';
@@ -16,8 +16,8 @@ class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
   final _pages = const [
-    CharactersPage(),
-    FavoritesPage(),
+    CharactersPage(key: PageStorageKey('characters')),
+    FavoritesPage(key: PageStorageKey('favorites')),
   ];
 
   @override
@@ -59,6 +59,9 @@ class _HomePageState extends State<HomePage> {
           setState(() {
             _currentIndex = index;
           });
+          if (index == 1) {
+            context.read<FavoritesCubit>().loadFavorites();
+          }
         },
         destinations: const [
           NavigationDestination(
