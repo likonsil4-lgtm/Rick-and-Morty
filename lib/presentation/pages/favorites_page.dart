@@ -101,34 +101,31 @@ class _FavoritesPageState extends State<FavoritesPage> {
             );
           }
 
-          return AnimatedList(
-            initialItemCount: state.favorites.length,
-            itemBuilder: (context, index, animation) {
+          return ListView.builder(
+            itemCount: state.favorites.length,
+            itemBuilder: (context, index) {
               final character = state.favorites[index];
-              return SizeTransition(
-                sizeFactor: animation,
-                child: Dismissible(
-                  key: Key(character.id.toString()),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 20),
-                    color: Colors.red,
-                    child: const Icon(
-                      Icons.delete,
-                      color: Colors.white,
-                    ),
+              return Dismissible(
+                key: Key(character.id.toString()),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 20),
+                  color: Colors.red,
+                  child: const Icon(
+                    Icons.delete,
+                    color: Colors.white,
                   ),
-                  onDismissed: (_) {
+                ),
+                onDismissed: (_) {
+                  context.read<FavoritesCubit>().removeFromFavorites(character);
+                },
+                child: AnimatedCharacterCard(
+                  character: character,
+                  index: index,
+                  onFavoriteToggle: () {
                     context.read<FavoritesCubit>().removeFromFavorites(character);
                   },
-                  child: CharacterCard(
-                    character: character,
-                    onFavoriteToggle: () {
-                      context.read<FavoritesCubit>().removeFromFavorites(character);
-                    },
-                    showDelete: true,
-                  ),
                 ),
               );
             },
