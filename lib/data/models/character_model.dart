@@ -75,5 +75,5 @@ class LocationModel {
   factory LocationModel.fromJson(Map<String, dynamic> json) =>
       _$LocationModelFromJson(json);
 
-  Map<String, dynamic> toJson() => _$LocationModelToJson(json);
+  Map<String, dynamic> toJson() => _$LocationModelToJson(this);
 }
