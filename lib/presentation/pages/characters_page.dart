@@ -127,15 +127,17 @@ class _CharactersPageState extends State<CharactersPage>
       body: NestedScrollView(
         controller: _scrollController,
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          // Улучшенный SliverAppBar с анимацией
           SliverAppBar(
             floating: true,
             pinned: true,
-            stretch: true, // Эффект растягивания при оверскролле
-            expandedHeight: 140,
+            stretch: true,
+            // Увеличил высоту чтобы вместить поиск без overflow
+            expandedHeight: 160, // Было 140, добавил 20 пикселей
             elevation: 0,
             scrolledUnderElevation: 4,
             backgroundColor: colorScheme.surface.withOpacity(0.95),
+            // Добавил toolbarHeight чтобы избежать конфликтов
+            toolbarHeight: kToolbarHeight, // Стандартная высота AppBar (56)
             flexibleSpace: FlexibleSpaceBar(
               stretchModes: const [
                 StretchMode.zoomBackground,
@@ -156,11 +158,13 @@ class _CharactersPageState extends State<CharactersPage>
                   ),
                 ),
               ),
-              titlePadding: const EdgeInsets.only(left: 16, bottom: 60),
+              // Увеличил отступ снизу чтобы title не перекрывался поиском
+              titlePadding: const EdgeInsets.only(left: 16, bottom: 80), // Было 60
               background: _buildAppBarBackground(colorScheme),
             ),
             bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(70),
+              // Увеличил preferredSize чтобы точно вместить поиск
+              preferredSize: const Size.fromHeight(76), // Было 70
               child: _buildSearchSection(colorScheme),
             ),
           ),
@@ -231,7 +235,8 @@ class _CharactersPageState extends State<CharactersPage>
 
   Widget _buildSearchSection(ColorScheme colorScheme) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      // Убрал вертикальные margin, оставил только padding внутри
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12), // bottom: 12 вместо 8
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: colorScheme.surface,
@@ -248,7 +253,7 @@ class _CharactersPageState extends State<CharactersPage>
       child: CustomSearchBar(
         controller: _searchController,
         onChanged: (value) {
-          HapticFeedback.lightImpact(); // Тактильная обратная связь
+          HapticFeedback.lightImpact();
           context.read<CharactersCubit>().updateSearch(value);
         },
         onFilterTap: () => _showFilterSheet(context),
@@ -593,7 +598,6 @@ class _CharactersPageState extends State<CharactersPage>
   }
 }
 
-// Кастомный painter для sci-fi сетки на фоне
 class _GridPatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
