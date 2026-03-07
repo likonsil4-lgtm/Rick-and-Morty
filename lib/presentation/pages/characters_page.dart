@@ -18,15 +18,13 @@ class CharactersPage extends StatefulWidget {
 class _CharactersPageState extends State<CharactersPage>
     with TickerProviderStateMixin {
   late final AnimationController _appBarAnimationController;
-  late final Animation<double> _appBarScaleAnimation;
   late final Animation<double> _titleFadeAnimation;
 
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
 
-  // Для отслеживания направления скролла (показ/скрытие FAB)
-  double _lastScrollOffset = 0;
-  bool _isFabVisible = true;
+  double _scrollThreshold = 100;
+  bool _isFabVisible = false;
 
   @override
   void initState() {
@@ -40,11 +38,6 @@ class _CharactersPageState extends State<CharactersPage>
     _appBarAnimationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
-    );
-
-    _appBarScaleAnimation = CurvedAnimation(
-      parent: _appBarAnimationController,
-      curve: Curves.easeOutBack,
     );
 
     _titleFadeAnimation = Tween<double>(begin: 0, end: 1).animate(
@@ -73,30 +66,24 @@ class _CharactersPageState extends State<CharactersPage>
   }
 
   void _onScroll() {
-    // Пагинация
     if (_isBottom) {
       context.read<CharactersCubit>().loadCharacters();
     }
 
-    // Логика показа/скрытия FAB
     final currentOffset = _scrollController.offset;
-    final isScrollingDown = currentOffset > _lastScrollOffset;
-    final isScrollingUp = currentOffset < _lastScrollOffset;
 
-    if (isScrollingDown && _isFabVisible && currentOffset > 100) {
-      setState(() => _isFabVisible = false);
-    } else if (isScrollingUp && !_isFabVisible) {
+    if (currentOffset > _scrollThreshold && !_isFabVisible) {
       setState(() => _isFabVisible = true);
+    } else if (currentOffset <= _scrollThreshold && _isFabVisible) {
+      setState(() => _isFabVisible = false);
     }
-
-    _lastScrollOffset = currentOffset;
   }
 
   bool get _isBottom {
     if (!_scrollController.hasClients) return false;
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.offset;
-    return currentScroll >= (maxScroll * 0.85); // Чуть раньше загружаем
+    return currentScroll >= (maxScroll * 0.85);
   }
 
   @override
@@ -131,13 +118,11 @@ class _CharactersPageState extends State<CharactersPage>
             floating: true,
             pinned: true,
             stretch: true,
-            // Увеличил высоту чтобы вместить поиск без overflow
-            expandedHeight: 160, // Было 140, добавил 20 пикселей
+            expandedHeight: 160,
             elevation: 0,
             scrolledUnderElevation: 4,
+            toolbarHeight: kToolbarHeight,
             backgroundColor: colorScheme.surface.withOpacity(0.95),
-            // Добавил toolbarHeight чтобы избежать конфликтов
-            toolbarHeight: kToolbarHeight, // Стандартная высота AppBar (56)
             flexibleSpace: FlexibleSpaceBar(
               stretchModes: const [
                 StretchMode.zoomBackground,
@@ -158,13 +143,11 @@ class _CharactersPageState extends State<CharactersPage>
                   ),
                 ),
               ),
-              // Увеличил отступ снизу чтобы title не перекрывался поиском
-              titlePadding: const EdgeInsets.only(left: 16, bottom: 80), // Было 60
+              titlePadding: const EdgeInsets.only(left: 16, bottom: 80),
               background: _buildAppBarBackground(colorScheme),
             ),
             bottom: PreferredSize(
-              // Увеличил preferredSize чтобы точно вместить поиск
-              preferredSize: const Size.fromHeight(76), // Было 70
+              preferredSize: const Size.fromHeight(76),
               child: _buildSearchSection(colorScheme),
             ),
           ),
@@ -198,7 +181,6 @@ class _CharactersPageState extends State<CharactersPage>
       ),
       child: Stack(
         children: [
-          // Декоративные круги (glassmorphism эффект)
           Positioned(
             top: -50,
             right: -30,
@@ -223,7 +205,6 @@ class _CharactersPageState extends State<CharactersPage>
               ),
             ),
           ),
-          // Сетка паттерн для sci-fi эффекта
           CustomPaint(
             size: Size.infinite,
             painter: _GridPatternPainter(),
@@ -235,8 +216,7 @@ class _CharactersPageState extends State<CharactersPage>
 
   Widget _buildSearchSection(ColorScheme colorScheme) {
     return Container(
-      // Убрал вертикальные margin, оставил только padding внутри
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12), // bottom: 12 вместо 8
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: colorScheme.surface,
@@ -319,7 +299,6 @@ class _CharactersPageState extends State<CharactersPage>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Кастомный анимированный индикатор
           TweenAnimationBuilder<double>(
             tween: Tween(begin: 0, end: 1),
             duration: const Duration(milliseconds: 1500),
@@ -418,7 +397,6 @@ class _CharactersPageState extends State<CharactersPage>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Анимированная иконка ошибки
             TweenAnimationBuilder<double>(
               tween: Tween(begin: 0, end: 1),
               duration: const Duration(milliseconds: 600),
@@ -462,7 +440,6 @@ class _CharactersPageState extends State<CharactersPage>
               ),
             ),
             const SizedBox(height: 32),
-            // Красивая кнопка Retry
             ElevatedButton.icon(
               onPressed: () {
                 HapticFeedback.mediumImpact();
@@ -556,7 +533,6 @@ class _CharactersPageState extends State<CharactersPage>
       );
     }
 
-    // Успешное уведомление при добавлении в избранное
     if (state.lastToggledCharacter != null) {
       final isFavorite = state.favorites.contains(state.lastToggledCharacter!.id);
       ScaffoldMessenger.of(context).showSnackBar(
