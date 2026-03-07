@@ -42,36 +42,69 @@ class CharacterRepositoryImpl implements CharacterRepository {
 
         return await _enrichWithFavorites(models);
       } catch (e) {
-        // Fallback на кеш при ошибке
-        final cached = await _local.getCachedCharacters();
-        if (cached.isNotEmpty) {
-          return await _enrichWithFavorites(cached);
-        }
-        throw Exception('Failed to load characters: $e');
+        // Fallback на кеш при ошибке с фильтрацией на стороне клиента
+        return await _getCachedWithFilters(
+          searchQuery: searchQuery,
+          status: status,
+          gender: gender,
+        );
       }
     } else {
-      // Оффлайн-режим
-      final cached = await _local.getCachedCharacters();
-      if (cached.isNotEmpty) {
-        return await _enrichWithFavorites(cached);
-      }
+      // Оффлайн-режим с локальной фильтрацией
+      return await _getCachedWithFilters(
+        searchQuery: searchQuery,
+        status: status,
+        gender: gender,
+      );
+    }
+  }
+
+  // Новый метод для локальной фильтрации
+  Future<List<Character>> _getCachedWithFilters({
+    String? searchQuery,
+    String? status,
+    String? gender,
+  }) async {
+    var cached = await _local.getCachedCharacters();
+
+    if (cached.isEmpty) {
       throw Exception('No internet connection and no cached data');
     }
+
+    // Применяем фильтры локально
+    if (searchQuery != null && searchQuery.isNotEmpty) {
+      final query = searchQuery.toLowerCase();
+      cached = cached.where((c) =>
+      c.name.toLowerCase().contains(query) ||
+          c.species.toLowerCase().contains(query) ||
+          c.type.toLowerCase().contains(query)
+      ).toList();
+    }
+
+    if (status != null && status.isNotEmpty) {
+      cached = cached.where((c) =>
+      c.status.toLowerCase() == status.toLowerCase()
+      ).toList();
+    }
+
+    if (gender != null && gender.isNotEmpty) {
+      cached = cached.where((c) =>
+      c.gender.toLowerCase() == gender.toLowerCase()
+      ).toList();
+    }
+
+    return await _enrichWithFavorites(cached);
   }
 
   @override
   Future<List<Character>> searchCharacters(String query) async {
     if (query.isEmpty) return [];
 
-    if (await _networkInfo.isConnected) {
-      try {
-        final models = await _remote.getCharacters(name: query);
-        return await _enrichWithFavorites(models);
-      } catch (e) {
-        throw Exception('Search failed: $e');
-      }
-    }
-    throw Exception('No internet connection for search');
+    // Используем getCharacters с фильтрацией, которое теперь работает офлайн
+    return getCharacters(
+      page: 1,
+      searchQuery: query,
+    );
   }
 
   Future<List<Character>> _enrichWithFavorites(List<CharacterModel> models) async {

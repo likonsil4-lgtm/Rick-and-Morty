@@ -33,7 +33,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
   void _onVisibilityChanged(VisibilityInfo info) {
     final visible = info.visibleFraction > 0.5;
     if (visible && !_isVisible) {
-      // Страница стала видимой - обновляем данные
       _loadFavorites();
     }
     _isVisible = visible;
