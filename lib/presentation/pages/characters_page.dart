@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../core/di/injection.dart';
 import '../blocs/characters/characters_cubit.dart';
 import '../widgets/animated_character_card.dart';
@@ -21,7 +22,10 @@ class _CharactersPageState extends State<CharactersPage> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    context.read<CharactersCubit>().loadCharacters();
+    // Гарантируем загрузку при старте
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<CharactersCubit>().loadCharacters();
+    });
   }
 
   void _onScroll() {
@@ -34,7 +38,8 @@ class _CharactersPageState extends State<CharactersPage> {
     if (!_scrollController.hasClients) return false;
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.offset;
-    return currentScroll >= (maxScroll * 0.9);
+    // Добавляем небольшой запас для более раннего триггера
+    return currentScroll >= (maxScroll * 0.8);
   }
 
   @override
@@ -65,19 +70,20 @@ class _CharactersPageState extends State<CharactersPage> {
                 ],
               ),
             ),
-            // Поисковая строка (вне SliverAppBar, чтобы не было переполнения)
+            // Поисковая строка
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: CustomSearchBar(
                 controller: _searchController,
                 onChanged: (value) {
+                  // Сброс при новом поиске и удаление дубликатов на уровне кубита
                   context.read<CharactersCubit>().updateSearch(value);
                 },
                 onFilterTap: () => _showFilterSheet(context),
               ),
             ),
             const SizedBox(height: 8),
-            // Основной контент со скроллом
+            // Основной контент
             Expanded(
               child: BlocConsumer<CharactersCubit, CharactersState>(
                 listener: (context, state) {
@@ -106,6 +112,12 @@ class _CharactersPageState extends State<CharactersPage> {
                     return const Center(child: CircularProgressIndicator());
                   }
 
+                  if (state.characters.isEmpty) {
+                    return const Center(
+                      child: Text('No characters found'),
+                    );
+                  }
+
                   return RefreshIndicator(
                     onRefresh: () async {
                       await context.read<CharactersCubit>().loadCharacters(refresh: true);
@@ -113,6 +125,7 @@ class _CharactersPageState extends State<CharactersPage> {
                     child: ListView.builder(
                       controller: _scrollController,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
+                      // Используем фактическую длину списка без дубликатов
                       itemCount: state.hasReachedMax
                           ? state.characters.length
                           : state.characters.length + 1,

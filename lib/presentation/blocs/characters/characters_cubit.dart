@@ -52,9 +52,10 @@ class CharactersCubit extends Cubit<CharactersState> {
         _currentPage++;
       }
 
+      // Удаляем дубликаты по ID
       final allCharacters = refresh
           ? characters
-          : [...state.characters, ...characters];
+          : _mergeWithoutDuplicates(state.characters, characters);
 
       emit(state.copyWith(
         status: CharactersStatus.success,
@@ -67,6 +68,16 @@ class CharactersCubit extends Cubit<CharactersState> {
         errorMessage: e.toString(),
       ));
     }
+  }
+
+  /// Объединяет списки, удаляя дубликаты по ID
+  List<Character> _mergeWithoutDuplicates(
+      List<Character> existing,
+      List<Character> newCharacters,
+      ) {
+    final existingIds = existing.map((c) => c.id).toSet();
+    final uniqueNew = newCharacters.where((c) => !existingIds.contains(c.id)).toList();
+    return [...existing, ...uniqueNew];
   }
 
   Future<void> toggleFavorite(Character character) async {
