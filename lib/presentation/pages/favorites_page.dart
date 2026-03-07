@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../blocs/favorites/favorites_cubit.dart';
-import '../widgets/character_card.dart';
+import '../widgets/animated_character_card.dart';
 
 class FavoritesPage extends StatefulWidget {
   const FavoritesPage({super.key});

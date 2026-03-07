@@ -36,7 +36,6 @@ class _AnimatedCharacterCardState extends State<AnimatedCharacterCard>
       CurvedAnimation(parent: _controller, curve: Curves.easeOut),
     );
 
-    // Staggered animation based on index
     Future.delayed(Duration(milliseconds: widget.index * 50), () {
       if (mounted) _controller.forward();
     });
@@ -221,9 +220,80 @@ class _AnimatedCharacterCardState extends State<AnimatedCharacterCard>
   }
 
   void _showDetails(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => CharacterDetailPage(character: widget.character),
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        maxChildSize: 0.9,
+        minChildSize: 0.5,
+        builder: (_, controller) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(20),
+            ),
+          ),
+          child: ListView(
+            controller: controller,
+            children: [
+              Hero(
+                tag: 'character_image_${widget.character.id}',
+                child: CachedNetworkImage(
+                  imageUrl: widget.character.image,
+                  height: 300,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.character.name,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 20),
+                    _buildDetailRow('Status', widget.character.status),
+                    _buildDetailRow('Species', widget.character.species),
+                    _buildDetailRow('Type', widget.character.type),
+                    _buildDetailRow('Gender', widget.character.gender),
+                    _buildDetailRow('Origin', widget.character.origin),
+                    _buildDetailRow('Location', widget.character.location),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.grey,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            value.isEmpty ? 'Unknown' : value,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }

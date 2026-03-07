@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/di/injection.dart';
 import '../blocs/characters/characters_cubit.dart';
-import '../widgets/character_card.dart';
+import '../widgets/animated_character_card.dart';
 import '../widgets/filter_bottom_sheet.dart';
 import '../widgets/search_bar.dart';
 
