@@ -16,16 +16,8 @@ import '../network/network_info.dart';
 final getIt = GetIt.instance;
 
 Future<void> configureDependencies() async {
-  // External
-  final prefs = await SharedPreferences.getInstance();
-  getIt.registerSingleton<SharedPreferences>(prefs);
-  getIt.registerSingleton<Dio>(Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 5),
-    receiveTimeout: const Duration(seconds: 3),
-  )));
-  getIt.registerSingleton<InternetConnectionChecker>(InternetConnectionChecker());
+  // Core (SharedPreferences, Dio, InternetConnectionChecker уже зарегистрированы в main.dart)
 
-  // Core
   getIt.registerSingleton<NetworkInfo>(NetworkInfoImpl(getIt()));
   getIt.registerSingleton<DatabaseHelper>(DatabaseHelper());
 
