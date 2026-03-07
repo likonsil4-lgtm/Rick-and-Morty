@@ -23,7 +23,7 @@ dependencies:
   path_provider: ^2.1.1
 
   # DI
-  get_it: ^7.6.4
+  get_it: ^7.7.0
   injectable: ^2.3.2
 
   # UI
