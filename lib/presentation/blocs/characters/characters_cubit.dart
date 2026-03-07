@@ -33,6 +33,7 @@ class CharactersCubit extends Cubit<CharactersState> {
         _hasReachedMax = false;
 
         // Обновляем state с новыми фильтрами (включая null)
+        // Сбрасываем lastToggledCharacter при обновлении списка
         emit(CharactersState(
           status: CharactersStatus.loading,
           characters: const [],
@@ -40,9 +41,13 @@ class CharactersCubit extends Cubit<CharactersState> {
           statusFilter: status,      // Может быть null - это сброс!
           genderFilter: gender,      // Может быть null - это сброс!
           searchQuery: searchQuery ?? state.searchQuery,
+          favorites: state.favorites, // Сохраняем избранное
         ));
       } else {
-        emit(state.copyWith(status: CharactersStatus.loading));
+        emit(state.copyWith(
+          status: CharactersStatus.loading,
+          clearLastToggledCharacter: true, // Сбрасываем при пагинации
+        ));
       }
 
       // Делаем запрос с текущими фильтрами из state
@@ -67,11 +72,13 @@ class CharactersCubit extends Cubit<CharactersState> {
         status: CharactersStatus.success,
         characters: allCharacters,
         hasReachedMax: _hasReachedMax,
+        clearLastToggledCharacter: true, // Сбрасываем после загрузки
       ));
     } catch (e) {
       emit(state.copyWith(
         status: CharactersStatus.failure,
         errorMessage: e.toString(),
+        clearLastToggledCharacter: true,
       ));
     }
   }
@@ -95,6 +102,15 @@ class CharactersCubit extends Cubit<CharactersState> {
 
     await _repository.toggleFavorite(character);
 
+    final isNowFavorite = !character.isFavorite;
+    final updatedFavorites = Set<int>.from(state.favorites);
+
+    if (isNowFavorite) {
+      updatedFavorites.add(character.id);
+    } else {
+      updatedFavorites.remove(character.id);
+    }
+
     final updatedCharacters = state.characters.map((c) {
       if (c.id == character.id) {
         return c.copyWith(isFavorite: !c.isFavorite);
@@ -102,7 +118,19 @@ class CharactersCubit extends Cubit<CharactersState> {
       return c;
     }).toList();
 
-    emit(state.copyWith(characters: updatedCharacters));
+    // Эмитим с lastToggledCharacter для показа SnackBar
+    emit(state.copyWith(
+      characters: updatedCharacters,
+      favorites: updatedFavorites,
+      lastToggledCharacter: character,
+    ));
+
+    // Через небольшую задержку сбрасываем lastToggledCharacter,
+    // чтобы SnackBar не показывался повторно при rebuild
+    await Future.delayed(const Duration(milliseconds: 100));
+    if (!isClosed) {
+      emit(state.copyWith(clearLastToggledCharacter: true));
+    }
   }
 
   void updateSearch(String query) {

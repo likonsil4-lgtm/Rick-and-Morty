@@ -11,6 +11,10 @@ class CharactersState extends Equatable {
   final String? statusFilter;
   final String? genderFilter;
 
+  // Новые поля для избранного
+  final Set<int> favorites; // ID избранных персонажей для быстрого доступа
+  final Character? lastToggledCharacter; // Последний переключённый персонаж (для SnackBar)
+
   const CharactersState({
     this.status = CharactersStatus.initial,
     this.characters = const [],
@@ -19,6 +23,8 @@ class CharactersState extends Equatable {
     this.searchQuery,
     this.statusFilter,
     this.genderFilter,
+    this.favorites = const {}, // Пустое множество по умолчанию
+    this.lastToggledCharacter, // null по умолчанию
   });
 
   CharactersState copyWith({
@@ -29,6 +35,9 @@ class CharactersState extends Equatable {
     String? searchQuery,
     String? statusFilter,
     String? genderFilter,
+    Set<int>? favorites,
+    Character? lastToggledCharacter,
+    bool clearLastToggledCharacter = false, // Флаг для сброса
   }) {
     return CharactersState(
       status: status ?? this.status,
@@ -38,6 +47,11 @@ class CharactersState extends Equatable {
       searchQuery: searchQuery ?? this.searchQuery,
       statusFilter: statusFilter ?? this.statusFilter,
       genderFilter: genderFilter ?? this.genderFilter,
+      favorites: favorites ?? this.favorites,
+      // Если clearLastToggledCharacter = true, сбрасываем в null
+      lastToggledCharacter: clearLastToggledCharacter
+          ? null
+          : (lastToggledCharacter ?? this.lastToggledCharacter),
     );
   }
 
@@ -50,5 +64,7 @@ class CharactersState extends Equatable {
     searchQuery,
     statusFilter,
     genderFilter,
+    favorites,
+    lastToggledCharacter,
   ];
 }
