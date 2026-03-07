@@ -1,7 +1,5 @@
-import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
 
-import '../../core/errors/failures.dart';
 import '../../core/network/network_info.dart';
 import '../../domain/entities/character.dart';
 import '../../domain/repositories/character_repository.dart';
@@ -22,7 +20,7 @@ class CharacterRepositoryImpl implements CharacterRepository {
       );
 
   @override
-  Future<Either<Failure, List<Character>>> getCharacters({
+  Future<List<Character>> getCharacters({
     int page = 1,
     String? searchQuery,
     String? status,
@@ -42,42 +40,38 @@ class CharacterRepositoryImpl implements CharacterRepository {
           await _local.cacheCharacters(models);
         }
 
-        final characters = await _enrichWithFavorites(models);
-        return Right(characters);
+        return await _enrichWithFavorites(models);
       } catch (e) {
         // Fallback на кеш при ошибке
         final cached = await _local.getCachedCharacters();
         if (cached.isNotEmpty) {
-          final characters = await _enrichWithFavorites(cached);
-          return Right(characters);
+          return await _enrichWithFavorites(cached);
         }
-        return Left(ServerFailure(message: e.toString()));
+        throw Exception('Failed to load characters: $e');
       }
     } else {
       // Оффлайн-режим
       final cached = await _local.getCachedCharacters();
       if (cached.isNotEmpty) {
-        final characters = await _enrichWithFavorites(cached);
-        return Right(characters);
+        return await _enrichWithFavorites(cached);
       }
-      return const Left(NetworkFailure());
+      throw Exception('No internet connection and no cached data');
     }
   }
 
   @override
-  Future<Either<Failure, List<Character>>> searchCharacters(String query) async {
-    if (query.isEmpty) return const Right([]);
+  Future<List<Character>> searchCharacters(String query) async {
+    if (query.isEmpty) return [];
 
     if (await _networkInfo.isConnected) {
       try {
         final models = await _remote.getCharacters(name: query);
-        final characters = await _enrichWithFavorites(models);
-        return Right(characters);
+        return await _enrichWithFavorites(models);
       } catch (e) {
-        return Left(ServerFailure(message: e.toString()));
+        throw Exception('Search failed: $e');
       }
     }
-    return const Left(NetworkFailure());
+    throw Exception('No internet connection for search');
   }
 
   Future<List<Character>> _enrichWithFavorites(List<CharacterModel> models) async {
@@ -90,27 +84,42 @@ class CharacterRepositoryImpl implements CharacterRepository {
   }
 
   @override
-  Future<Either<Failure, List<Character>>> getFavoriteCharacters() async {
+  Future<List<Character>> getFavoriteCharacters() async {
     try {
       final models = await _local.getCachedFavorites();
-      return Right(models.map((m) => m.toEntity(isFavorite: true)).toList());
+      return models.map((m) => m.toEntity(isFavorite: true)).toList();
     } catch (e) {
-      return Left(CacheFailure(message: e.toString()));
+      throw Exception('Failed to load favorites: $e');
     }
   }
 
   @override
-  Future<Either<Failure, void>> toggleFavorite(Character character) async {
+  Future<void> toggleFavorite(Character character) async {
     try {
-      final model = CharacterModel.fromEntity(character);
+      final model = CharacterModel(
+        id: character.id,
+        name: character.name,
+        status: character.status,
+        species: character.species,
+        type: character.type,
+        gender: character.gender,
+        image: character.image,
+        location: LocationModel(name: character.location),
+        origin: LocationModel(name: character.origin),
+      );
+
       if (character.isFavorite) {
         await _local.removeCachedFavorite(character.id);
       } else {
         await _local.cacheFavorite(model);
       }
-      return const Right(null);
     } catch (e) {
-      return Left(CacheFailure(message: e.toString()));
+      throw Exception('Failed to toggle favorite: $e');
     }
+  }
+
+  @override
+  Future<bool> isFavorite(int id) async {
+    return await _local.isFavorite(id);
   }
 }
