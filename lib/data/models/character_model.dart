@@ -15,7 +15,9 @@ class CharacterModel {
   final String image;
   final LocationModel location;
   final LocationModel origin;
-  final String? episode;
+
+  // Исправлено: episode это List<String>, не String
+  final List<String>? episode;
   final String? url;
   final String? created;
 

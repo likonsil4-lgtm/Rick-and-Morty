@@ -1,5 +1,3 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
-
 part of 'character_model.dart';
 
 // **************************************************************************
@@ -18,7 +16,8 @@ CharacterModel _$CharacterModelFromJson(Map<String, dynamic> json) =>
       location:
           LocationModel.fromJson(json['location'] as Map<String, dynamic>),
       origin: LocationModel.fromJson(json['origin'] as Map<String, dynamic>),
-      episode: json['episode'] as String?,
+      episode:
+          (json['episode'] as List<dynamic>?)?.map((e) => e as String).toList(),
       url: json['url'] as String?,
       created: json['created'] as String?,
     );
