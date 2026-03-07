@@ -21,29 +21,36 @@ class CharactersCubit extends Cubit<CharactersState> {
     String? status,
     String? gender,
   }) async {
-    if (state.status == CharactersStatus.loading ||
-        (_hasReachedMax && !refresh)) return;
+    if (isClosed) return;
+
+    // Защита от повторной загрузки
+    if (state.status == CharactersStatus.loading && !refresh) return;
+    if (_hasReachedMax && !refresh) return;
 
     try {
       if (refresh) {
         _currentPage = 1;
         _hasReachedMax = false;
-        emit(state.copyWith(
+
+        // Обновляем state с новыми фильтрами (включая null)
+        emit(CharactersState(
           status: CharactersStatus.loading,
-          characters: [],
-          searchQuery: searchQuery,
-          statusFilter: status,
-          genderFilter: gender,
+          characters: const [],
+          hasReachedMax: false,
+          statusFilter: status,      // Может быть null - это сброс!
+          genderFilter: gender,      // Может быть null - это сброс!
+          searchQuery: searchQuery ?? state.searchQuery,
         ));
       } else {
         emit(state.copyWith(status: CharactersStatus.loading));
       }
 
+      // Делаем запрос с текущими фильтрами из state
       final characters = await _repository.getCharacters(
         page: _currentPage,
-        searchQuery: searchQuery ?? state.searchQuery,
-        status: status ?? state.statusFilter,
-        gender: gender ?? state.genderFilter,
+        searchQuery: state.searchQuery,
+        status: state.statusFilter,
+        gender: state.genderFilter,
       );
 
       if (characters.isEmpty) {
@@ -52,10 +59,9 @@ class CharactersCubit extends Cubit<CharactersState> {
         _currentPage++;
       }
 
-      // Удаляем дубликаты по ID
       final allCharacters = refresh
           ? characters
-          : _mergeWithoutDuplicates(state.characters, characters);
+          : [...state.characters, ...characters];
 
       emit(state.copyWith(
         status: CharactersStatus.success,
@@ -70,17 +76,23 @@ class CharactersCubit extends Cubit<CharactersState> {
     }
   }
 
-  /// Объединяет списки, удаляя дубликаты по ID
-  List<Character> _mergeWithoutDuplicates(
-      List<Character> existing,
-      List<Character> newCharacters,
-      ) {
-    final existingIds = existing.map((c) => c.id).toSet();
-    final uniqueNew = newCharacters.where((c) => !existingIds.contains(c.id)).toList();
-    return [...existing, ...uniqueNew];
+  void updateFilters({String? status, String? gender}) {
+    print('updateFilters called: status=$status, gender=$gender');
+    loadCharacters(
+      refresh: true,
+      status: status,
+      gender: gender,
+    );
+  }
+
+  void resetAllFilters() {
+    print('resetAllFilters called');
+    updateFilters(status: null, gender: null);
   }
 
   Future<void> toggleFavorite(Character character) async {
+    if (isClosed) return;
+
     await _repository.toggleFavorite(character);
 
     final updatedCharacters = state.characters.map((c) {
@@ -91,10 +103,6 @@ class CharactersCubit extends Cubit<CharactersState> {
     }).toList();
 
     emit(state.copyWith(characters: updatedCharacters));
-  }
-
-  void updateFilters({String? status, String? gender}) {
-    loadCharacters(refresh: true, status: status, gender: gender);
   }
 
   void updateSearch(String query) {
