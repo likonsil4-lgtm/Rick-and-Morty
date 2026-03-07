@@ -15,6 +15,9 @@ class CharacterModel {
   final String image;
   final LocationModel location;
   final LocationModel origin;
+  final String? episode;
+  final String? url;
+  final String? created;
 
   CharacterModel({
     required this.id,
@@ -26,6 +29,9 @@ class CharacterModel {
     required this.image,
     required this.location,
     required this.origin,
+    this.episode,
+    this.url,
+    this.created,
   });
 
   factory CharacterModel.fromJson(Map<String, dynamic> json) =>
@@ -45,16 +51,29 @@ class CharacterModel {
     origin: origin.name,
     isFavorite: isFavorite,
   );
+
+  factory CharacterModel.fromEntity(Character entity) => CharacterModel(
+    id: entity.id,
+    name: entity.name,
+    status: entity.status,
+    species: entity.species,
+    type: entity.type,
+    gender: entity.gender,
+    image: entity.image,
+    location: LocationModel(name: entity.location),
+    origin: LocationModel(name: entity.origin),
+  );
 }
 
 @JsonSerializable()
 class LocationModel {
   final String name;
+  final String? url;
 
-  LocationModel({required this.name});
+  LocationModel({required this.name, this.url});
 
   factory LocationModel.fromJson(Map<String, dynamic> json) =>
       _$LocationModelFromJson(json);
 
-  Map<String, dynamic> toJson() => _$LocationModelToJson(this);
+  Map<String, dynamic> toJson() => _$LocationModelToJson(json);
 }
