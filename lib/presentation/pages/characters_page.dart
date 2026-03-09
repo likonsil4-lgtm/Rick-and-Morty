@@ -494,7 +494,6 @@ class _CharactersPageState extends State<CharactersPage>
     );
   }
 
-  // ИСПРАВЛЕННЫЙ ОБРАБОТЧИК СОСТОЯНИЙ
   void _handleStateChanges(BuildContext context, CharactersState state) {
     // Обработка ошибок
     if (state.status == CharactersStatus.failure) {
@@ -504,21 +503,15 @@ class _CharactersPageState extends State<CharactersPage>
       );
     }
 
-    // Обработка добавления/удаления из избранного
     if (state.lastToggledCharacter != null) {
       final isFavorite = state.favorites.contains(state.lastToggledCharacter!.id);
 
-      if (isFavorite) {
-        RickMortySnackbar.showFavoriteAdded(
-          context,
-          state.lastToggledCharacter!.name,
-        );
-      } else {
-        RickMortySnackbar.showFavoriteRemoved(
-          context,
-          state.lastToggledCharacter!.name,
-        );
-      }
+      // Передаём текущий статус (true = в избранном, false = удалено)
+      RickMortySnackbar.showFavoriteToggled(
+        context,
+        state.lastToggledCharacter!.name,
+        isFavorite, // true = добавлено, false = удалено
+      );
     }
   }
 

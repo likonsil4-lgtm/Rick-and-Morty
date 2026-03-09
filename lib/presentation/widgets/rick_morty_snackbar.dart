@@ -1,437 +1,310 @@
-import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-enum SnackbarType {
-  success,    // Добавлено в избранное - зеленый портал
-  error,      // Ошибка - красный портал
-  info,       // Информация - синий портал
-  remove,     // Удалено из избранного - оранжевый портал
-}
+// ==================== МЕНЕДЖЕР УВЕДОМЛЕНИЙ ====================
 
-class RickMortySnackbar {
-  static void show({
+class SnackbarManager {
+  static final SnackbarManager _instance = SnackbarManager._internal();
+  factory SnackbarManager() => _instance;
+  SnackbarManager._internal();
+
+  OverlayEntry? _currentEntry;
+
+  void show({
     required BuildContext context,
     required String message,
-    required SnackbarType type,
-    String? actionLabel,
-    VoidCallback? onAction,
-    Duration duration = const Duration(seconds: 3),
+    required IconData icon,
+    required Color color,
+    bool isError = false,
   }) {
-    final overlay = Overlay.of(context);
-    late OverlayEntry overlayEntry;
+    _currentEntry?.remove();
 
-    overlayEntry = OverlayEntry(
-      builder: (context) => _RickMortySnackbarWidget(
+    final overlay = Overlay.of(context);
+    _currentEntry = OverlayEntry(
+      builder: (context) => PortalSnackBar(
         message: message,
-        type: type,
-        actionLabel: actionLabel,
-        onAction: onAction,
-        duration: duration,
-        onDismiss: () => overlayEntry.remove(),
+        icon: icon,
+        color: color,
+        isError: isError,
+        onDismiss: () {
+          _currentEntry?.remove();
+          _currentEntry = null;
+        },
       ),
     );
 
-    overlay.insert(overlayEntry);
+    overlay.insert(_currentEntry!);
+  }
+}
+
+// ==================== PUBLIC API ====================
+
+// ==================== PUBLIC API ====================
+
+class RickMortySnackbar {
+  // Старый метод для совместимости
+  static void showFavoriteToggled(
+      BuildContext context,
+      String characterName,
+      bool isFavorite, // true = сейчас в избранном (добавлено), false = удалено
+      ) {
+    if (isFavorite) {
+      showFavoriteAdded(context, characterName);
+    } else {
+      showFavoriteRemoved(context, characterName);
+    }
   }
 
   static void showFavoriteAdded(BuildContext context, String characterName) {
-    show(
+    SnackbarManager().show(
       context: context,
-      message: '$characterName added to favorites!',
-      type: SnackbarType.success,
-      actionLabel: 'UNDO',
-      onAction: () {
-        // Можно добавить логику отмены
-      },
+      message: '$characterName добавлен в избранное',
+      icon: Icons.favorite_rounded,
+      color: const Color(0xFF00B894),
     );
+    HapticFeedback.lightImpact();
   }
 
   static void showFavoriteRemoved(BuildContext context, String characterName) {
-    show(
+    SnackbarManager().show(
       context: context,
-      message: '$characterName removed from favorites',
-      type: SnackbarType.remove,
+      message: '$characterName удалён из избранного',
+      icon: Icons.heart_broken_outlined,
+      color: const Color(0xFF6C5CE7),
     );
   }
 
-  static void showError(BuildContext context, String message) {
-    show(
+  static void showSuccess(BuildContext context, String message) {
+    SnackbarManager().show(
       context: context,
       message: message,
-      type: SnackbarType.error,
-      actionLabel: 'RETRY',
+      icon: Icons.check_circle_rounded,
+      color: const Color(0xFF00CEC9), // Бирюзовый
+    );
+    HapticFeedback.mediumImpact();
+  }
+
+  static void showError(BuildContext context, String message) {
+    SnackbarManager().show(
+      context: context,
+      message: message,
+      icon: Icons.error_outline_rounded,
+      color: const Color(0xFFFF6B6B), // Красный
+      isError: true,
+    );
+    HapticFeedback.heavyImpact();
+  }
+
+  static void showPortalOpened(BuildContext context) {
+    SnackbarManager().show(
+      context: context,
+      message: 'Портал открыт! Wubba Lubba Dub Dub!',
+      icon: Icons.auto_fix_high_rounded,
+      color: const Color(0xFF00B894),
     );
   }
 }
 
-class _RickMortySnackbarWidget extends StatefulWidget {
+// ==================== WIDGET ====================
+
+class PortalSnackBar extends StatefulWidget {
   final String message;
-  final SnackbarType type;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-  final Duration duration;
+  final IconData icon;
+  final Color color;
+  final bool isError;
   final VoidCallback onDismiss;
 
-  const _RickMortySnackbarWidget({
+  const PortalSnackBar({
+    super.key,
     required this.message,
-    required this.type,
-    this.actionLabel,
-    this.onAction,
-    required this.duration,
+    required this.icon,
+    required this.color,
+    this.isError = false,
     required this.onDismiss,
   });
 
   @override
-  State<_RickMortySnackbarWidget> createState() => _RickMortySnackbarWidgetState();
+  State<PortalSnackBar> createState() => _PortalSnackBarState();
 }
 
-class _RickMortySnackbarWidgetState extends State<_RickMortySnackbarWidget>
-    with TickerProviderStateMixin {
-  late AnimationController _slideController;
-  late AnimationController _portalController;
-  late AnimationController _glitchController;
-  late Animation<Offset> _slideAnimation;
-  late Animation<double> _portalAnimation;
-  Timer? _dismissTimer;
+class _PortalSnackBarState extends State<PortalSnackBar>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _slideAnimation;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
-
-    // Анимация появления (скольжение сверху)
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 600),
+    _controller = AnimationController(
       vsync: this,
+      duration: const Duration(milliseconds: 400),
     );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, -1.5),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.elasticOut,
-    ));
-
-    // Анимация портала (пульсация)
-    _portalController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    )..repeat();
-
-    // Glitch эффект
-    _glitchController = AnimationController(
-      duration: const Duration(milliseconds: 100),
-      vsync: this,
+    _slideAnimation = Tween<double>(begin: -100, end: 0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOutBack,
+      ),
     );
 
-    // Запускаем анимацию появления
-    _slideController.forward();
+    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOut,
+      ),
+    );
 
-    // Таймер на автоматическое исчезновение
-    _dismissTimer = Timer(widget.duration, _dismiss);
-
-    // Запускаем glitch эффект периодически
-    _startGlitchEffect();
+    _controller.forward();
+    _scheduleDismiss();
   }
 
-  void _startGlitchEffect() {
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        _glitchController.forward().then((_) {
-          _glitchController.reverse();
-          if (mounted) {
-            Future.delayed(const Duration(seconds: 2), _startGlitchEffect);
-          }
-        });
-      }
-    });
+  void _scheduleDismiss() async {
+    await Future.delayed(const Duration(seconds: 3));
+    if (mounted) _dismiss();
   }
 
-  void _dismiss() {
-    _dismissTimer?.cancel();
-    _slideController.reverse().then((_) {
-      widget.onDismiss();
-    });
+  void _dismiss() async {
+    await _controller.reverse();
+    widget.onDismiss();
   }
 
   @override
   void dispose() {
-    _slideController.dispose();
-    _portalController.dispose();
-    _glitchController.dispose();
-    _dismissTimer?.cancel();
+    _controller.dispose();
     super.dispose();
-  }
-
-  Color get _portalColor {
-    switch (widget.type) {
-      case SnackbarType.success:
-        return const Color(0xFF00FF00); // Кислотно-зеленый
-      case SnackbarType.error:
-        return const Color(0xFFFF0040); // Красный
-      case SnackbarType.info:
-        return const Color(0xFF00BFFF); // Голубой
-      case SnackbarType.remove:
-        return const Color(0xFFFFA500); // Оранжевый
-    }
-  }
-
-  IconData get _icon {
-    switch (widget.type) {
-      case SnackbarType.success:
-        return Icons.star_rounded;
-      case SnackbarType.error:
-        return Icons.error_outline;
-      case SnackbarType.info:
-        return Icons.info_outline;
-      case SnackbarType.remove:
-        return Icons.delete_outline;
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
+    final topPadding = MediaQuery.of(context).padding.top;
 
     return Positioned(
-      top: MediaQuery.of(context).padding.top + 10,
+      top: topPadding + 12,
       left: 16,
       right: 16,
-      child: SlideTransition(
-        position: _slideAnimation,
-        child: GestureDetector(
-          onTap: _dismiss,
-          onHorizontalDragEnd: (_) => _dismiss(),
-          child: AnimatedBuilder(
-            animation: _portalController,
-            builder: (context, child) {
-              return CustomPaint(
-                painter: _PortalPainter(
-                  color: _portalColor,
-                  progress: _portalController.value,
-                ),
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return Transform.translate(
+            offset: Offset(0, _slideAnimation.value),
+            child: Opacity(
+              opacity: _fadeAnimation.value,
+              child: GestureDetector(
+                onTap: _dismiss,
                 child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.9),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        widget.color,
+                        widget.color.withOpacity(0.85),
+                        const Color(0xFF2D3436),
+                      ],
+                      stops: const [0.0, 0.6, 1.0],
+                    ),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: _portalColor.withOpacity(0.5 + (_portalController.value * 0.5)),
-                      width: 2,
+                      color: Colors.white.withOpacity(0.3),
+                      width: 1.5,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: _portalColor.withOpacity(0.4),
+                        color: widget.color.withOpacity(0.4),
                         blurRadius: 20,
                         spreadRadius: 2,
+                        offset: const Offset(0, 8),
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Stack(
-                      children: [
-                        // Фоновый эффект портала
-                        Positioned.fill(
-                          child: AnimatedBuilder(
-                            animation: _portalController,
-                            builder: (context, child) {
-                              return CustomPaint(
-                                painter: _SwirlPainter(
-                                  color: _portalColor.withOpacity(0.1),
-                                  progress: _portalController.value,
-                                ),
-                              );
-                            },
+                  child: Row(
+                    children: [
+                      // Иконка с портальным свечением
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.3),
+                            width: 1,
                           ),
                         ),
-
-                        // Glitch эффект
-                        AnimatedBuilder(
-                          animation: _glitchController,
-                          builder: (context, child) {
-                            final glitch = _glitchController.value * 4;
-                            return Transform.translate(
-                              offset: Offset(
-                                math.sin(glitch * 10) * 2,
-                                math.cos(glitch * 15) * 1,
-                              ),
-                              child: child,
-                            );
-                          },
-                          child: Row(
+                        child: Icon(
+                          widget.icon,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      // Текст
+                      Expanded(
+                        child: DefaultTextStyle(
+                          style: const TextStyle(
+                            decoration: TextDecoration.none,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              // Иконка с анимацией
-                              TweenAnimationBuilder(
-                                tween: Tween<double>(begin: 0, end: 1),
-                                duration: const Duration(milliseconds: 500),
-                                builder: (context, value, child) {
-                                  return Transform.scale(
-                                    scale: value,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: _portalColor.withOpacity(0.2),
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: _portalColor,
-                                          width: 2,
-                                        ),
-                                      ),
-                                      child: Icon(
-                                        _icon,
-                                        color: _portalColor,
-                                        size: 24,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                              const SizedBox(width: 12),
-
-                              // Текст
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      _getTitle(),
-                                      style: TextStyle(
-                                        color: _portalColor,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 1.2,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      widget.message,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
+                              Text(
+                                widget.isError ? 'ОШИБКА!' : 'ПОРТАЛ АКТИВЕН',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.2,
+                                  decoration: TextDecoration.none,
                                 ),
                               ),
-
-                              // Кнопка действия
-                              if (widget.actionLabel != null)
-                                TextButton(
-                                  onPressed: () {
-                                    widget.onAction?.call();
-                                    _dismiss();
-                                  },
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: _portalColor,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                  ),
-                                  child: Text(
-                                    widget.actionLabel!,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
+                              const SizedBox(height: 4),
+                              Text(
+                                widget.message,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.2,
+                                  decoration: TextDecoration.none,
                                 ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ],
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      // Кнопка закрытия
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _dismiss,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            child: const Icon(
+                              Icons.close_rounded,
+                              color: Colors.white70,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              );
-            },
-          ),
-        ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
-
-  String _getTitle() {
-    switch (widget.type) {
-      case SnackbarType.success:
-        return 'WUBBA LUBBA DUB DUB!';
-      case SnackbarType.error:
-        return 'OH GEEZ!';
-      case SnackbarType.info:
-        return 'HEY MORTY!';
-      case SnackbarType.remove:
-        return 'BYE BYE!';
-    }
-  }
-}
-
-// Кастомный painter для эффекта портала
-class _PortalPainter extends CustomPainter {
-  final Color color;
-  final double progress;
-
-  _PortalPainter({required this.color, required this.progress});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final maxRadius = size.width > size.height ? size.width : size.height;
-
-    // Рисуем кольца портала
-    for (int i = 0; i < 3; i++) {
-      final radius = maxRadius * (0.3 + (i * 0.2) + (progress * 0.1));
-      final opacity = (1 - ((i + progress) / 4)).clamp(0.0, 1.0) * 0.3;
-
-      final paint = Paint()
-        ..color = color.withOpacity(opacity)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2 + (i * 1)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
-
-      canvas.drawCircle(center, radius, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
-
-// Painter для завихрений внутри портала
-class _SwirlPainter extends CustomPainter {
-  final Color color;
-  final double progress;
-
-  _SwirlPainter({required this.color, required this.progress});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-
-    for (int i = 0; i < 5; i++) {
-      final path = Path();
-      final startAngle = (i * 72 + (progress * 360)) * (3.14159 / 180);
-      final endAngle = startAngle + 1.5;
-
-      path.addArc(
-        Rect.fromCenter(center: center, width: 40 + (i * 15), height: 40 + (i * 15)),
-        startAngle,
-        endAngle,
-      );
-
-      final paint = Paint()
-        ..color = color.withOpacity(0.1 - (i * 0.02))
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3
-        ..strokeCap = StrokeCap.round;
-
-      canvas.drawPath(path, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter) => true;
 }
