@@ -56,26 +56,26 @@
 - **json_serializable**: ^6.7.1 — сериализация моделей
 - **flutter_lints**: ^3.0.1 — линтинг
 
-### Структура проекта
+##  Структура проекта
 
-lib/
-├── core/                    # Ядро приложения
-│   ├── constants/           # Константы (API URLs)
-│   ├── di/                  # Dependency Injection (get_it)
-│   ├── network/             # NetworkInfo, ApiClient
-│   └── theme/               # Темы приложения
-├── data/                    # Слой данных
-│   ├── datasources/         # Источники данных
-│   │   ├── local/           # SQLite, SharedPreferences
-│   │   └── remote/          # REST API (Dio)
-│   ├── models/              # DTO-модели (json_serializable)
-│   └── repositories/        # Реализации репозиториев
-├── domain/                  # Доменный слой
-│   ├── entities/            # Бизнес-сущности
-│   ├── repositories/        # Абстракции репозиториев
-│   └── usecases/            # Use cases (опционально)
-├── presentation/            # UI-слой
-│   ├── blocs/               # BLoCs/Cubits
-│   ├── pages/               # Экраны
-│   └── widgets/             # Переиспользуемые виджеты
-└── main.dart                # Точка входа
+    lib/
+    ├── core/                    # Ядро приложения
+    │   ├── constants/           # Константы (API URLs)
+    │   ├── di/                  # Dependency Injection (get_it)
+    │   ├── network/             # NetworkInfo, ApiClient
+    │   └── theme/               # Темы приложения
+    ├── data/                    # Слой данных
+    │   ├── datasources/         # Источники данных
+    │   │   ├── local/           # SQLite, SharedPreferences
+    │   │   └── remote/          # REST API (Dio)
+    │   ├── models/              # DTO-модели (json_serializable)
+    │   └── repositories/        # Реализации репозиториев
+    ├── domain/                  # Доменный слой
+    │   ├── entities/            # Бизнес-сущности
+    │   ├── repositories/        # Абстракции репозиториев
+    │   └── usecases/            # Use cases (опционально)
+    ├── presentation/            # UI-слой
+    │   ├── blocs/               # BLoCs/Cubits
+    │   ├── pages/               # Экраны
+    │   └── widgets/             # Переиспользуемые виджеты
+    └── main.dart                # Точка входа
