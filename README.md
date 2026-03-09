@@ -56,6 +56,37 @@
 - **json_serializable**: ^6.7.1 — сериализация моделей
 - **flutter_lints**: ^3.0.1 — линтинг
 
+## 🚀 Сборка и запуск
+
+### Требования
+- **Flutter**: 3.0.0 или выше
+- **Dart**: 3.0.0 или выше
+- **Android**: minSdkVersion 21 (Android 5.0)
+- **iOS**: iOS 11.0 или выше
+
+### Установка зависимостей
+
+    flutter pub get
+
+### Генерация кода (DI)
+
+    flutter pub run build_runner build --delete-conflicting-outputs
+
+### Запуск в режиме разработки
+
+    flutter run
+
+### Сборка релизной версии
+
+**Android:**
+
+    flutter build apk --release
+    
+    # или для Google Play
+    
+    flutter build appbundle --release
+
+
 ##  Структура проекта
 
     lib/
